@@ -23,67 +23,18 @@ flags = sys.getdlopenflags()
 sys.setdlopenflags(flags | ctypes.RTLD_GLOBAL)
 
 import magnum as mn
-import numpy as np
 from magnum import shaders, text
 from magnum.platform.glfw import Application
 
 import habitat_sim
 from habitat_sim import ReplayRenderer, ReplayRendererConfiguration, physics
 from habitat_sim.logging import LoggingContext, logger
-from habitat_sim.utils.common import quat_from_angle_axis
 from habitat_sim.utils.settings import default_sim_settings
+from habitat_sim.utils.common import quat_to_magnum, quat_from_angle_axis, d3_40_colors_rgb
 from PIL import Image
-from habitat_sim.utils.common import quat_to_magnum
 import numpy as np
 import jsonlines
 import quaternion
-
-d3_40_colors_rgb: np.ndarray = np.array(
-    [
-        [1, 1, 1],
-        [31, 119, 180],
-        [174, 199, 232],
-        [255, 127, 14],
-        [255, 187, 120],
-        [44, 160, 44],
-        [152, 223, 138],
-        [214, 39, 40],
-        [255, 152, 150],
-        [148, 103, 189],
-        [197, 176, 213],
-        [140, 86, 75],
-        [196, 156, 148],
-        [227, 119, 194],
-        [247, 182, 210],
-        [127, 127, 127],
-        [199, 199, 199],
-        [188, 189, 34],
-        [219, 219, 141],
-        [23, 190, 207],
-        [158, 218, 229],
-        [57, 59, 121],
-        [82, 84, 163],
-        [107, 110, 207],
-        [156, 158, 222],
-        [99, 121, 57],
-        [140, 162, 82],
-        [181, 207, 107],
-        [206, 219, 156],
-        [140, 109, 49],
-        [189, 158, 57],
-        [231, 186, 82],
-        [231, 203, 148],
-        [132, 60, 57],
-        [173, 73, 74],
-        [214, 97, 107],
-        [231, 150, 156],
-        [123, 65, 115],
-        [165, 81, 148],
-        [206, 109, 189],
-        [222, 158, 214],
-    ],
-    dtype=np.uint8,
-)
 
 class HabitatSimInteractiveViewer(Application):
     # the maximum number of chars displayable in the app window
@@ -103,7 +54,7 @@ class HabitatSimInteractiveViewer(Application):
     # CPU and GPU usage info
     DISPLAY_FONT_SIZE = 16.0
 
-    def __init__(self, sim_settings: Dict[str, Any], saved_path) -> None:
+    def __init__(self, sim_settings: Dict[str, Any], saved_path, start_position, start_rotation) -> None:
         self.obs_save_idx = 0
         self.total_frames = 0
         self.saved_path = saved_path
@@ -176,10 +127,7 @@ class HabitatSimInteractiveViewer(Application):
         self.display_font = text.FontManager().load_and_instantiate("TrueTypeFont")
         relative_path_to_font = "data/fonts/ProggyClean.ttf"
         habitat_sim_dir = os.path.join(submodules_dir, 'habitat-sim')
-        self.display_font.open_file(
-            os.path.join(habitat_sim_dir, relative_path_to_font),
-            13,
-        )
+        self.display_font.open_file(os.path.join(habitat_sim_dir, relative_path_to_font), 13)
 
         # Glyphs we need to render everything
         self.glyph_cache = text.GlyphCache(mn.Vector2i(256), mn.Vector2i(1))
@@ -218,9 +166,6 @@ class HabitatSimInteractiveViewer(Application):
             mn.gl.Renderer.BlendEquation.ADD, mn.gl.Renderer.BlendEquation.ADD
         )
 
-        # variables that track app data and CPU/GPU usage
-        self.num_frames_to_track = 60
-
         # Cycle mouse utilities
         self.mouse_interaction = MouseMode.LOOK
         self.mouse_grabber: Optional[MouseGrabber] = None
@@ -239,7 +184,7 @@ class HabitatSimInteractiveViewer(Application):
         self.tiled_sims: list[habitat_sim.simulator.Simulator] = None
         self.replay_renderer_cfg: Optional[ReplayRendererConfiguration] = None
         self.replay_renderer: Optional[ReplayRenderer] = None
-        self.reconfigure_sim()
+        self.reconfigure_sim(start_position, start_rotation)
         self.debug_semantic_colors = {}
 
         # compute NavMesh if not already loaded by the scene.
@@ -296,11 +241,7 @@ class HabitatSimInteractiveViewer(Application):
         for region in self.sim.semantic_scene.regions:
             color = self.debug_semantic_colors.get(region.id, mn.Color4.magenta())
             for edge in region.volume_edges:
-                debug_line_render.draw_transformed_line(
-                    edge[0],
-                    edge[1],
-                    color,
-                )
+                debug_line_render.draw_transformed_line(edge[0], edge[1], color)
 
     def debug_draw(self):
         """
@@ -318,9 +259,7 @@ class HabitatSimInteractiveViewer(Application):
         if self.semantic_region_debug_draw:
             if len(self.debug_semantic_colors) != len(self.sim.semantic_scene.regions):
                 for region in self.sim.semantic_scene.regions:
-                    self.debug_semantic_colors[region.id] = mn.Color4(
-                        mn.Vector3(np.random.random(3))
-                    )
+                    self.debug_semantic_colors[region.id] = mn.Color4(mn.Vector3(np.random.random(3)))
             self.draw_region_debug(debug_line_render)
 
     def draw_event(
@@ -440,6 +379,7 @@ class HabitatSimInteractiveViewer(Application):
         color_sensor_spec.resolution = mn.Vector2i([settings["height"], settings["width"]])
         color_sensor_spec.position = mn.Vector3([0.0, settings["sensor_height"], 0.0])
         color_sensor_spec.sensor_subtype = habitat_sim.SensorSubType.PINHOLE
+        color_sensor_spec.clear_color = [1.0, 1.0, 1.0, 1.0]  # 设置背景为白色（RGBA）
         sensor_specs.append(color_sensor_spec)
 
         depth_sensor_spec = habitat_sim.CameraSensorSpec()
@@ -448,6 +388,7 @@ class HabitatSimInteractiveViewer(Application):
         depth_sensor_spec.resolution = mn.Vector2i([settings["height"], settings["width"]])
         depth_sensor_spec.position = mn.Vector3([0.0, settings["sensor_height"], 0.0])
         depth_sensor_spec.sensor_subtype = habitat_sim.SensorSubType.PINHOLE
+        depth_sensor_spec.clear_color = [1.0, 1.0, 1.0, 1.0]  # 设置背景为白色（RGBA）
         sensor_specs.append(depth_sensor_spec)
 
         semantic_sensor_spec = habitat_sim.CameraSensorSpec()
@@ -456,6 +397,7 @@ class HabitatSimInteractiveViewer(Application):
         semantic_sensor_spec.resolution = mn.Vector2i([settings["height"], settings["width"]])
         semantic_sensor_spec.position = mn.Vector3([0.0, settings["sensor_height"], 0.0])
         semantic_sensor_spec.sensor_subtype = habitat_sim.SensorSubType.PINHOLE
+        semantic_sensor_spec.clear_color = [1.0, 1.0, 1.0, 1.0]  # 设置背景为白色（RGBA）
         sensor_specs.append(semantic_sensor_spec)
 
         # Here you can specify the amount of displacement in a forward action and the turn angle
@@ -475,7 +417,7 @@ class HabitatSimInteractiveViewer(Application):
 
         return habitat_sim.Configuration(sim_cfg, [agent_cfg])
 
-    def reconfigure_sim(self) -> None:
+    def reconfigure_sim(self, start_position, start_rotation) -> None:
         """
         Utilizes the current `self.sim_settings` to configure and set up a new
         `habitat_sim.Simulator`, and then either starts a simulation instance, or replaces
@@ -515,12 +457,13 @@ class HabitatSimInteractiveViewer(Application):
         self.default_agent = self.sim.get_agent(self.agent_id)
         self.render_camera = self.default_agent.scene_node.node_sensor_suite.get("color_sensor")
 
-        # # Set agent state
-        # agent_state = habitat_sim.AgentState()
-        # agent_state.position = np.array([2.769141, 4.019996,  1.4040153])
-        # agent_state.rotation = np.quaternion(0.309016704559326, 0, 0.951056659221649, 0)
-        # self.default_agent.set_state(agent_state)
-
+        # Set agent state
+        if start_position is not None and start_rotation is not None:
+            agent_state = habitat_sim.AgentState()
+            agent_state.position = np.array(start_position)
+            agent_state.rotation = np.quaternion(start_rotation[0], start_rotation[1], start_rotation[2], start_rotation[3])
+            self.default_agent.set_state(agent_state)
+        
         # set sim_settings scene name as actual loaded scene
         self.sim_settings["scene"] = self.sim.curr_scene_name
 
@@ -606,36 +549,6 @@ class HabitatSimInteractiveViewer(Application):
         depth_img = Image.fromarray((depth_obs / 10 * 255).astype(np.uint8), mode="L")
         f_path_img = "test_output/depth/%d.png"%total_frames
         depth_img.save(f_path_img)
-
-    # def save_semantic_observation_instance(self, obs, total_frames):
-    #     os.makedirs('test_output', exist_ok=True)
-    #     os.makedirs('test_output/sem', exist_ok=True)
-
-    #     semantic_obs = obs["semantic_sensor"]
-    #     label_obs = self.map_by_dict(semantic_obs, self.ins_id2label_pos)
-    #     ins_i_obs = self.map_by_dict(semantic_obs, self.ins_id2ins_i) 
-
-    #     # np.save('test_output/sem/%d-label.npy'% total_frames, label_obs)
-    #     # np.save('test_output/sem/%d-instance.npy'% total_frames, ins_i_obs)
-
-    #     label_obs = label_obs.flatten() 
-    #     msk = label_obs==-100
-    #     label_obs = label_obs % 40 + 1
-    #     label_obs[msk] = 0
-    #     semantic_img = Image.new("P", (semantic_obs.shape[1], semantic_obs.shape[0]))
-    #     semantic_img.putpalette(d3_40_colors_rgb.flatten())
-    #     semantic_img.putdata((label_obs).astype(np.uint8))
-    #     semantic_img.save("test_output/sem/%d-label.png" % total_frames)
-        
-    #     ins_i_obs = ins_i_obs.flatten() 
-    #     msk = ins_i_obs==-100
-    #     ins_i_obs = ins_i_obs % 40 + 1
-    #     ins_i_obs[msk] = 0
-    #     semantic_img_ins = Image.new("P", (semantic_obs.shape[1], semantic_obs.shape[0]))
-    #     semantic_img_ins.putpalette(d3_40_colors_rgb.flatten())
-    #     semantic_img_ins.putdata((ins_i_obs).astype(np.uint8))
-    #     semantic_img_ins.save("test_output/sem/%d-ins.png" % total_frames)
-
 
     def to_opengl_transform(self, transform=None):
         if transform is None:
@@ -815,10 +728,6 @@ class HabitatSimInteractiveViewer(Application):
                     max(cur_scene_index + inc, 0), len(scene_ids) - 1
                 )
                 self.sim_settings["scene"] = scene_ids[next_scene_index]
-            self.reconfigure_sim()
-            logger.info(
-                f"Reconfigured simulator for scene: {self.sim_settings['scene']}"
-            )
 
         elif key == pressed.SPACE:
             if not self.sim.config.sim_cfg.enable_physics:
@@ -897,11 +806,6 @@ class HabitatSimInteractiveViewer(Application):
                 ao.create_all_motors(joint_motor_settings)
             else:
                 logger.warn("Load URDF: input file not found. Aborting.")
-
-        # elif key == pressed.E:
-        #     # 保存所有状态到文件
-        #     filename = "test_output/agent_states.json"
-        #     self.save_states_to_file(filename, self.states_to_save)
         elif key == pressed.M:
             self.cycle_mouse_mode()
             logger.info(f"Command: mouse mode set to {self.mouse_interaction}")
@@ -1487,6 +1391,18 @@ if __name__ == "__main__":
         help="Vertical resolution of the window.",
     )
     parser.add_argument(
+        "--start_position", 
+        type=str, 
+        required=True, 
+        help="Start pose as a string"
+    )
+    parser.add_argument(
+        "--start_rotation", 
+        type=str, 
+        required=True, 
+        help="Start rotation as a string"
+    )
+    parser.add_argument(
         "--sensor_height",
         default=1.5,
         type=float,
@@ -1502,14 +1418,17 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     
-    os.makedirs(args.saved_path, exist_ok=True)
-
     if args.num_environments < 1:
         parser.error("num-environments must be a positive non-zero integer.")
     if args.width < 1:
         parser.error("width must be a positive non-zero integer.")
     if args.height < 1:
         parser.error("height must be a positive non-zero integer.")
+
+    # custom settings
+    os.makedirs(args.saved_path, exist_ok=True)
+    start_position = list(map(float, args.start_position.strip('[]').split(',')))
+    start_rotation = list(map(float, args.start_rotation.strip('[]').split(',')))
 
     # Setting up sim_settings
     sim_settings: Dict[str, Any] = default_sim_settings
@@ -1529,4 +1448,4 @@ if __name__ == "__main__":
     sim_settings['semantic_sensor'] = True
     sim_settings['depth_sensor'] = True
     # start the application
-    HabitatSimInteractiveViewer(sim_settings, args.saved_path).exec()
+    HabitatSimInteractiveViewer(sim_settings, args.saved_path, start_position, start_rotation).exec()
