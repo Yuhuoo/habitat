@@ -12,60 +12,57 @@ from typing import Any, Dict
 import habitat_sim
 from habitat_sim.utils.common import d3_40_colors_rgb
 from habitat_sim.utils.common import quat_to_magnum
-from habitat_sim.bindings import built_with_bullet
+from habitat_sim.utils.settings import default_sim_settings
 from scipy.spatial.transform import Rotation
 
-import magnum as mn
-BLACK = mn.Color4.from_linear_rgb_int(0)
-
-# [default_sim_settings]
-default_sim_settings: Dict[str, Any] = {
-    # path to .scene_dataset.json file
-    "scene_dataset_config_file": "default",
-    # name of an existing scene in the dataset, a scene, stage, or asset filepath, or "NONE" for an empty scene
-    "scene": "NONE",
-    # camera sensor parameters
-    "width": 1920,
-    "height": 1440,
-    # horizontal field of view in degrees
-    "hfov": 90,
-    # far clipping plane
-    "zfar": 1000.0,
-    # optional background color override for rgb sensors
-    "clear_color": BLACK,
-    # vertical offset of the camera from the agent's root position (e.g. height of eyes)
-    "sensor_height": 1.5,
-    # defaul agent ix
-    "default_agent": 0,
-    # radius of the agent cylinder approximation for navmesh
-    "agent_radius": 0.1,
-    # pick sensors to use
-    "color_sensor": True,
-    "semantic_sensor": False,
-    "depth_sensor": False,
-    "ortho_rgba_sensor": False,
-    "ortho_depth_sensor": False,
-    "ortho_semantic_sensor": False,
-    "fisheye_rgba_sensor": False,
-    "fisheye_depth_sensor": False,
-    "fisheye_semantic_sensor": False,
-    "equirect_rgba_sensor": False,
-    "equirect_depth_sensor": False,
-    "equirect_semantic_sensor": False,
-    # random seed
-    "seed": 1,
-    # path to .physics_config.json file
-    "physics_config_file": "data/default.physics_config.json",
-    # use bullet physics for dyanimcs or not - make default value whether or not
-    # Simulator was built with bullet enabled
-    "enable_physics": built_with_bullet,
-    # ensure or create compatible navmesh for agent paramters
-    "default_agent_navmesh": True,
-    # if configuring a navmesh, should STATIC MotionType objects be included
-    "navmesh_include_static_objects": False,
-    # Enable horizon-based ambient occlusion, which provides soft shadows in corners and crevices.
-    "enable_hbao": False,
-}
+# # [default_sim_settings]
+# default_sim_settings: Dict[str, Any] = {
+#     # path to .scene_dataset.json file
+#     "scene_dataset_config_file": "default",
+#     # name of an existing scene in the dataset, a scene, stage, or asset filepath, or "NONE" for an empty scene
+#     "scene": "NONE",
+#     # camera sensor parameters
+#     "width": 1920,
+#     "height": 1440,
+#     # horizontal field of view in degrees
+#     "hfov": 90,
+#     # far clipping plane
+#     "zfar": 1000.0,
+#     # optional background color override for rgb sensors
+#     "clear_color": BLACK,
+#     # vertical offset of the camera from the agent's root position (e.g. height of eyes)
+#     "sensor_height": 1.5,
+#     # defaul agent ix
+#     "default_agent": 0,
+#     # radius of the agent cylinder approximation for navmesh
+#     "agent_radius": 0.1,
+#     # pick sensors to use
+#     "color_sensor": True,
+#     "semantic_sensor": False,
+#     "depth_sensor": False,
+#     "ortho_rgba_sensor": False,
+#     "ortho_depth_sensor": False,
+#     "ortho_semantic_sensor": False,
+#     "fisheye_rgba_sensor": False,
+#     "fisheye_depth_sensor": False,
+#     "fisheye_semantic_sensor": False,
+#     "equirect_rgba_sensor": False,
+#     "equirect_depth_sensor": False,
+#     "equirect_semantic_sensor": False,
+#     # random seed
+#     "seed": 1,
+#     # path to .physics_config.json file
+#     "physics_config_file": "data/default.physics_config.json",
+#     # use bullet physics for dyanimcs or not - make default value whether or not
+#     # Simulator was built with bullet enabled
+#     "enable_physics": built_with_bullet,
+#     # ensure or create compatible navmesh for agent paramters
+#     "default_agent_navmesh": True,
+#     # if configuring a navmesh, should STATIC MotionType objects be included
+#     "navmesh_include_static_objects": False,
+#     # Enable horizon-based ambient occlusion, which provides soft shadows in corners and crevices.
+#     "enable_hbao": False,
+# }
 
 def save_colmap_cameras(K, camera_file, cam_nums):
     with open(camera_file, 'w') as f:
@@ -97,6 +94,9 @@ def save_colmap_images(camera_poses, images_path, img_list):
     with open(images_path, 'w') as f:
         for i, pose in enumerate(camera_poses, 1): # Starting index at 1
             rotation, position = pose
+            # q = np.array([rotation.w, rotation.x, rotation.y, rotation.z])
+            # t = position
+            # q = np.array([rotation.w, rotation.x, -rotation.z, -rotation.y])
             q = np.array([rotation.x, rotation.w, -rotation.z, -rotation.y])
             if q[0] < 0:
                 q = -q
@@ -165,9 +165,9 @@ def save_observation(action, rgb_obs, semantic_obs, depth_obs, output_path):
         semantic_img.putpalette(d3_40_colors_rgb.flatten())
         semantic_img.putdata((semantic_obs.flatten() % 40).astype(np.uint8))
         semantic_img = semantic_img.convert("RGBA")
-    if depth_obs.size != 0:
-        depth = depth_obs / (10 - 0) # normalize depth values to [0, 1]
-        depth_img = Image.fromarray((depth * 255).astype(np.uint8), mode="L")
+    # if depth_obs.size != 0:
+    #     depth = depth_obs / (10 - 0) # normalize depth values to [0, 1]
+    #     depth_img = Image.fromarray((depth * 255).astype(np.uint8), mode="L")
 
     # # Combine depth, RGB, and semantic images into a composite image
     # composite_img = Image.new("RGBA", (rgb_img.width * 3, rgb_img.height))
@@ -178,25 +178,25 @@ def save_observation(action, rgb_obs, semantic_obs, depth_obs, output_path):
     # Create subdirectories for RGB, depth, and semantic images
     rgb_dir = os.path.join(output_path, "images")
     depth_dir = os.path.join(output_path, "depth")
-    # semantic_dir = os.path.join(output_path, "semantic")
+    semantic_dir = os.path.join(output_path, "semantic")
     # composite_dir = os.path.join(output_path, "composite")
 
     os.makedirs(rgb_dir, exist_ok=True)
     os.makedirs(depth_dir, exist_ok=True)
-    # os.makedirs(semantic_dir, exist_ok=True)
+    os.makedirs(semantic_dir, exist_ok=True)
     # os.makedirs(composite_dir, exist_ok=True)
 
     # Save images to respective subdirectories
     rgb_path = os.path.join(rgb_dir, f"observation_rgb_{action}.png")
-    depth_path = os.path.join(depth_dir, f"observation_depth_{action}.png")
-    # depth_file = os.path.join(depth_dir, f"observation_depth_{action}.npy")
-    # semantic_path = os.path.join(semantic_dir, f"observation_semantic_{action}.png")
+    # depth_path = os.path.join(depth_dir, f"observation_depth_{action}.png")
+    depth_file = os.path.join(depth_dir, f"observation_depth_{action}.npy")
+    semantic_path = os.path.join(semantic_dir, f"observation_semantic_{action}.png")
     # composite_path = os.path.join(composite_dir, f"{str(action).zfill(5)}.png")
 
     rgb_img.save(rgb_path)
-    depth_img.save(depth_path)
-    # np.save(depth_file, depth_obs)
-    # semantic_img.save(semantic_path)
+    # depth_img.save(depth_path)
+    np.save(depth_file, depth_obs)
+    semantic_img.save(semantic_path)
     # composite_img.save(composite_path)
 
 # custom config 
@@ -216,6 +216,7 @@ def make_cfg(settings):
     color_sensor_spec.resolution = [settings["height"], settings["width"]]
     color_sensor_spec.position = [0.0, settings["sensor_height"], 0.0]
     color_sensor_spec.sensor_subtype = habitat_sim.SensorSubType.PINHOLE
+    color_sensor_spec.clear_color = [1.0, 1.0, 1.0, 1.0]  # 设置背景为白色（RGBA）
     sensor_specs.append(color_sensor_spec)
 
     depth_sensor_spec = habitat_sim.CameraSensorSpec()
@@ -224,6 +225,7 @@ def make_cfg(settings):
     depth_sensor_spec.resolution = [settings["height"], settings["width"]]
     depth_sensor_spec.position = [0.0, settings["sensor_height"], 0.0]
     depth_sensor_spec.sensor_subtype = habitat_sim.SensorSubType.PINHOLE
+    depth_sensor_spec.clear_color = [1.0, 1.0, 1.0, 1.0]  # 设置背景为白色（RGBA）
     sensor_specs.append(depth_sensor_spec)
 
     semantic_sensor_spec = habitat_sim.CameraSensorSpec()
@@ -232,6 +234,7 @@ def make_cfg(settings):
     semantic_sensor_spec.resolution = [settings["height"], settings["width"]]
     semantic_sensor_spec.position = [0.0, settings["sensor_height"], 0.0]
     semantic_sensor_spec.sensor_subtype = habitat_sim.SensorSubType.PINHOLE
+    semantic_sensor_spec.clear_color = [1.0, 1.0, 1.0, 1.0]  # 设置背景为白色（RGBA）
     sensor_specs.append(semantic_sensor_spec)
 
     # Here you can specify the amount of displacement in a forward action and the turn angle
@@ -302,21 +305,23 @@ def load_action(action_path="action.txt"):
         actions = [x.strip() for x in lines]
         return actions
     
-def semantic_habitat_excute(sim_settings, action_path, output_path, feq=3):
+def semantic_habitat_excute(sim_settings, action_path, output_path, start_position, start_rotation, feq=3):
 
     # Create the simulator configuration
     cfg = make_cfg(sim_settings)
     sim = habitat_sim.Simulator(cfg)
 
-    # # Set agent state
+    # Set agent state
     agent = sim.initialize_agent(sim_settings["default_agent"])
-    # agent_state = habitat_sim.AgentState()
-    # agent_state.position = np.array([2.769141, 3.699996,  1.4040153])  # world space
-    # agent_state.rotation = np.quaternion(0.309016704559326, 0, 0.951056659221649, 0)   # quaternion
-    # agent.set_state(agent_state)
-    # # Get agent state
-    # agent_state = agent.get_state()
-    # print("agent_state: position", agent_state.position, "rotation", agent_state.rotation)
+    if start_position is not None and start_rotation is not None:
+        agent_state = habitat_sim.AgentState()
+        agent_state.position = np.array(start_position)
+        agent_state.rotation = np.quaternion(start_rotation[0], start_rotation[1], start_rotation[2], start_rotation[3])
+        agent.set_state(agent_state)
+    
+    # Get agent state
+    agent_state = agent.get_state()
+    print("agent_state: position", agent_state.position, "rotation", agent_state.rotation)
     
     # Get intrinsics
     # get_camera_intrinsics(sim, "color_sensor")
@@ -345,13 +350,8 @@ def semantic_habitat_excute(sim_settings, action_path, output_path, feq=3):
             semantic = observations["semantic_sensor"]
             depth = observations["depth_sensor"]
             save_observation(action_idx, rgb, semantic, depth, output_path)
-            
-            ## old traj saving
-            # agent_state = agent.get_state()
-            # sensor_state = agent_state.sensor_states['color_sensor']
-            # save_traj(sensor_state, output_path)
-            
-            ## For colmap-style svaing
+
+            # For colmap-style svaing
             img_list.append(f"observation_rgb_{action_idx}.png")
             sensor_state = agent.get_state().sensor_states['color_sensor']
             position = sensor_state.position
@@ -435,30 +435,44 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--width",
-        default=960,
+        default=1920//2,
         type=int,
         help="Horizontal resolution of the window.",
     )
     parser.add_argument(
         "--height",
-        default=640,
+        default=1440//2,
         type=int,
         help="Vertical resolution of the window.",
     )
     parser.add_argument(
         "--sensor_height",
-        default=1.0,
-        type=int,
+        default=1.5,
+        type=float,
         help="Vertical resolution of the window.",
+    )
+    parser.add_argument(
+        "--start_position", 
+        type=str, 
+        required=True, 
+        help="Start pose as a string"
+    )
+    parser.add_argument(
+        "--start_rotation", 
+        type=str, 
+        required=True, 
+        help="Start rotation as a string"
     )
     
     args = parser.parse_args()
     
+    # custom settings
     print(f"output_path = {args.output_path}")
     if not os.path.exists(args.output_path):
         os.makedirs(args.output_path, exist_ok=True)
+    start_position = list(map(float, args.start_position.strip('[]').split(',')))
+    start_rotation = list(map(float, args.start_rotation.strip('[]').split(',')))
 
-    
     # Setting up sim_settings
     sim_settings: Dict[str, Any] = default_sim_settings
     sim_settings["width"] = args.width
@@ -468,9 +482,8 @@ if __name__ == "__main__":
     sim_settings["scene_dataset_config_file"] = args.dataset
     sim_settings["enable_physics"] = not args.disable_physics
     sim_settings["use_default_lighting"] = args.use_default_lighting
-    sim_settings["composite_files"] = args.composite_files
     sim_settings["num_environments"] = args.num_environments
     sim_settings["enable_hbao"] = args.hbao
 
-    semantic_habitat_excute(sim_settings, args.action_path, args.output_path, args.feq)
+    semantic_habitat_excute(sim_settings, args.action_path, args.output_path, start_position, start_rotation, args.feq)
 

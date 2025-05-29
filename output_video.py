@@ -1,12 +1,11 @@
 import cv2
 import os
 
-img_dir = "output/scanet/00000/composite/"
-output_video = "output.mp4"
+img_dir = "output/scanet/00000/images"
+output_video = "output/scanet/00000/images.mp4"
 
 # 获取所有图片并按文件名排序
-images = sorted([img for img in os.listdir(img_dir) if img.endswith(".png")], 
-                key=lambda x: int(x.split('.')[0]))
+images = sorted([img for img in os.listdir(img_dir) if img.endswith(".png")])
 
 # 读取第一张图片获取尺寸
 frame = cv2.imread(os.path.join(img_dir, images[0]))

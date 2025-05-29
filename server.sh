@@ -1,11 +1,11 @@
 #!/bin/bash
 
-python viewer.py \
-    --scene data/scene_datasets/oLBMNvg9in8/oLBMNvg9in8.glb \
-    --dataset data/scene_datasets/oLBMNvg9in8/mp3d.scene_dataset_config.json \
-    --action_path data/scene_datasets/oLBMNvg9in8/action.txt \
-    --output_path output/matterport3d/oLBMNvg9in8/colmap_test \
-    --feq 2
+# python viewer.py \
+#     --scene data/scene_datasets/oLBMNvg9in8/oLBMNvg9in8.glb \
+#     --dataset data/scene_datasets/oLBMNvg9in8/mp3d.scene_dataset_config.json \
+#     --action_path data/scene_datasets/oLBMNvg9in8/5_26.txt \
+#     --output_path output/matterport3d/oLBMNvg9in8/5_26_2 \
+#     --feq 3
 # zip -q -r output/matterport3d/oLBMNvg9in8/second.zip output/matterport3d/oLBMNvg9in8/second
 
 # python viewer.py \
@@ -15,13 +15,16 @@ python viewer.py \
 #     --output_path output/17DRP5sb8fy
 # ffmpeg -framerate 24 -i output/17DRP5sb8fy/rgb/observation_rgb_%d.png -c:v libx264 -pix_fmt yuv420p output/17DRP5sb8fy/output.mp4
 
-# python viewer.py \
-#     --scene data/datasets/Scannet/scans/scene0000_00/scene0000_00_vh_clean.glb \
-#     --dataset data/datasets/Scannet/scans/scene0000_00/scene_dataset_config.json \
-#     --action_path data/datasets/Scannet/scans/scene0000_00/action.txt \
-#     --output_path output/scanet/00000 \
-#     --feq 5
-# zip -q -r output/matterport3d/oLBMNvg9in8.zip output/matterport3d/oLBMNvg9in8
+python viewer.py \
+    --scene data/datasets/Scannet/scans/scene0000_00/scene0000_00_vh_clean.glb \
+    --dataset data/datasets/Scannet/scans/scene0000_00/scene_dataset_config.json \
+    --action_path data/datasets/Scannet/scans/scene0000_00/action.txt \
+    --output_path output/scanet/test \
+    --feq 10 \
+    --start_position "[2.2184856, 1.6997461, -1.5994138]" \
+    --start_rotation "[0.983254909515381, 0, -0.182235538959503, 0]" \
+    --sensor_height 0.05
+# zip -q -r output/scanet/00000.zip output/scanet/00000
 
 
 
