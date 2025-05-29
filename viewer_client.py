@@ -193,7 +193,28 @@ class HabitatSimInteractiveViewer(Application):
             and self.cfg.sim_cfg.scene_id.lower() != "none"
         ):
             self.navmesh_config_and_recompute()
+            
+        def set_agent_to_navmesh_center():
+            # 获取场景AABB中心
+            scene_graph = self.sim.get_active_scene_graph()
+            aabb = scene_graph.get_root_node().cumulative_bb
+            center = aabb.center()
 
+            # 获取NavMesh并找到最近的可导航点
+            navmesh = self.sim.pathfinder
+            if not navmesh.is_loaded:
+                raise RuntimeError("NavMesh未加载！请确保场景支持路径规划。")
+
+            # 将中心点投影到NavMesh上
+            center_on_navmesh = navmesh.snap_point(center)
+
+            # 设置Agent状态
+            agent_state = habitat_sim.AgentState()
+            agent_state.position = center_on_navmesh
+            agent_state.rotation = np.quaternion(1, 0, 0, 0)
+            agent = self.sim.initialize_agent(0, agent_state)
+        set_agent_to_navmesh_center()
+        
         self.time_since_last_simulation = 0.0
         LoggingContext.reinitialize_from_env()
         logger.setLevel("INFO")
@@ -656,7 +677,12 @@ class HabitatSimInteractiveViewer(Application):
             sensor_state = agent.get_state().sensor_states['color_sensor']
             current_position = sensor_state.position
             current_rotation = sensor_state.rotation
-            print(f"action:{x}, position:{current_position}, rotation:{current_rotation}")
+            print(f"action:{x}, camera position:{current_position}, camera rotation:{current_rotation}")
+            state = agent.get_state()
+            current_position = state.position
+            current_rotation = state.rotation
+            print(f"action:{x}, agent position:{current_position}, agent rotation:{current_rotation}")
+            print("========================================")
             action_path = os.path.join(self.saved_path, "action.txt")
             self.save_action(x, action_path)
 
@@ -1393,13 +1419,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "--start_position", 
         type=str, 
-        required=True, 
         help="Start pose as a string"
     )
     parser.add_argument(
         "--start_rotation", 
         type=str, 
-        required=True, 
         help="Start rotation as a string"
     )
     parser.add_argument(
@@ -1427,8 +1451,15 @@ if __name__ == "__main__":
 
     # custom settings
     os.makedirs(args.saved_path, exist_ok=True)
-    start_position = list(map(float, args.start_position.strip('[]').split(',')))
-    start_rotation = list(map(float, args.start_rotation.strip('[]').split(',')))
+    if args.start_position is not None:
+        start_position = list(map(float, args.start_position.strip('[]').split(',')))
+    else:
+        start_position = None
+
+    if args.start_rotation is not None:
+        start_rotation = list(map(float, args.start_rotation.strip('[]').split(',')))
+    else:
+        start_rotation = None
 
     # Setting up sim_settings
     sim_settings: Dict[str, Any] = default_sim_settings

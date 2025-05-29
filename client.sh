@@ -1,14 +1,13 @@
-
-scene=data/scanet/high_res/scans/scene0006_00/scene0006_00_vh_clean.glb
-saved_path=data/scanet/high_res/scans/scene0006_00
+data_dir="data/scanet/high_res/scans"
+scene="scene0001_01"
+glb_path="$data_dir/$scene/${scene}_vh_clean.glb"
+saved_path="$data_dir/$scene"
 python viewer_client.py \
-    --scene $scene \
+    --scene $glb_path \
     --data data/scanet/high_res/scene_dataset_config.json \
     --width 960 --height 640 \
     --saved_path $saved_path \
-    --start_position "[2.2184856, 1.6997461, -1.5994138]" \
-    --start_rotation "[0.983254909515381, 0, -0.182235538959503, 0]" \
-    --sensor_height 1.5 
+    --sensor_height 0.7
 
 # python viewer_client.py \
 #     --scene data/matterport3D/oLBMNvg9in8/oLBMNvg9in8.glb \
