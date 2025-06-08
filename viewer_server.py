@@ -15,55 +15,6 @@ from habitat_sim.utils.common import quat_to_magnum
 from habitat_sim.utils.settings import default_sim_settings
 from scipy.spatial.transform import Rotation
 
-# # [default_sim_settings]
-# default_sim_settings: Dict[str, Any] = {
-#     # path to .scene_dataset.json file
-#     "scene_dataset_config_file": "default",
-#     # name of an existing scene in the dataset, a scene, stage, or asset filepath, or "NONE" for an empty scene
-#     "scene": "NONE",
-#     # camera sensor parameters
-#     "width": 1920,
-#     "height": 1440,
-#     # horizontal field of view in degrees
-#     "hfov": 90,
-#     # far clipping plane
-#     "zfar": 1000.0,
-#     # optional background color override for rgb sensors
-#     "clear_color": BLACK,
-#     # vertical offset of the camera from the agent's root position (e.g. height of eyes)
-#     "sensor_height": 1.5,
-#     # defaul agent ix
-#     "default_agent": 0,
-#     # radius of the agent cylinder approximation for navmesh
-#     "agent_radius": 0.1,
-#     # pick sensors to use
-#     "color_sensor": True,
-#     "semantic_sensor": False,
-#     "depth_sensor": False,
-#     "ortho_rgba_sensor": False,
-#     "ortho_depth_sensor": False,
-#     "ortho_semantic_sensor": False,
-#     "fisheye_rgba_sensor": False,
-#     "fisheye_depth_sensor": False,
-#     "fisheye_semantic_sensor": False,
-#     "equirect_rgba_sensor": False,
-#     "equirect_depth_sensor": False,
-#     "equirect_semantic_sensor": False,
-#     # random seed
-#     "seed": 1,
-#     # path to .physics_config.json file
-#     "physics_config_file": "data/default.physics_config.json",
-#     # use bullet physics for dyanimcs or not - make default value whether or not
-#     # Simulator was built with bullet enabled
-#     "enable_physics": built_with_bullet,
-#     # ensure or create compatible navmesh for agent paramters
-#     "default_agent_navmesh": True,
-#     # if configuring a navmesh, should STATIC MotionType objects be included
-#     "navmesh_include_static_objects": False,
-#     # Enable horizon-based ambient occlusion, which provides soft shadows in corners and crevices.
-#     "enable_hbao": False,
-# }
-
 def save_colmap_cameras(K, camera_file, cam_nums):
     with open(camera_file, 'w') as f:
         for i in range(1, cam_nums+1):  # Starting index at 1
@@ -72,91 +23,15 @@ def save_colmap_cameras(K, camera_file, cam_nums):
             f.write(f"{i} PINHOLE {width} {height} {K[0, 0]} {K[1, 1]} {K[0, 2]} {K[1, 2]}\n")
 
 def save_colmap_images(camera_poses, images_path, img_list):
-    def qvec2rotmat(qvec):
-        """
-        Converts a quartonian to a rotation matrix
-        """
-        return np.array([
-            [
-                1 - 2 * qvec[2]**2 - 2 * qvec[3]**2,
-                2 * qvec[1] * qvec[2] - 2 * qvec[0] * qvec[3],
-                2 * qvec[3] * qvec[1] + 2 * qvec[0] * qvec[2]
-            ], [
-                2 * qvec[1] * qvec[2] + 2 * qvec[0] * qvec[3],
-                1 - 2 * qvec[1]**2 - 2 * qvec[3]**2,
-                2 * qvec[2] * qvec[3] - 2 * qvec[0] * qvec[1]
-            ], [
-                2 * qvec[3] * qvec[1] - 2 * qvec[0] * qvec[2],
-                2 * qvec[2] * qvec[3] + 2 * qvec[0] * qvec[1],
-                1 - 2 * qvec[1]**2 - 2 * qvec[2]**2
-            ]
-        ])
     with open(images_path, 'w') as f:
         for i, pose in enumerate(camera_poses, 1): # Starting index at 1
             rotation, position = pose
-            # q = np.array([rotation.w, rotation.x, rotation.y, rotation.z])
-            # t = position
-            # q = np.array([rotation.w, rotation.x, -rotation.z, -rotation.y])
-            q = np.array([rotation.x, rotation.w, -rotation.z, -rotation.y])
-            if q[0] < 0:
-                q = -q
-            rotation_matrix = qvec2rotmat(q)
-            t = -rotation_matrix.dot(position.T)
+            q = np.array([rotation.x, rotation.y, rotation.z, rotation.w])
+            t = position
             f.write(f"{i} {q[0]} {q[1]} {q[2]} {q[3]} {t[0]} {t[1]} {t[2]} {i} {img_list[i-1]}\n")
             f.write(f"\n")
-       
-def save_colmap_images_v2(camera_poses, images_path, img_list):
-    def to_colmap_transform(c2w=None):
-        if c2w is None:
-            c2w = np.eye(4)
-        P = np.array([[1, 0, 0, 0],
-                    [0, -1, 0, 0],
-                    [0, 0, -1, 0],
-                    [0, 0, 0, 1]])
-        new_c2w = P @ c2w @ P.T
-        return new_c2w
-    
-    with open(images_path, 'w') as f:
-        for i, pose in enumerate(camera_poses, 1):  # Starting index at 1
-            quaternion, position = pose
-            
-            cam_pose = np.eye(4)
-            cam_pose[:3, 3] = position
-            rotation = quat_to_magnum(quaternion).to_matrix()
-            cam_pose[:3, :3] = rotation
-            c2w = to_colmap_transform(cam_pose)
-
-            q = Rotation.from_matrix(c2w[:3, :3]).as_quat()
-            t = c2w[:3, 3]
-            f.write(f"{i} {q[0]} {q[1]} {q[2]} {q[3]} {t[0]} {t[1]} {t[2]} {i} {img_list[i-1]}\n")
-            f.write(f"\n")
-     
-def save_traj(sensor_state, output_path):
-    
-    def to_opengl_transform(transform=None):
-        if transform is None:
-            transform = np.eye(4)
-        T = np.array([[1, 0, 0, 0],
-                    [0, np.cos(np.pi), -np.sin(np.pi), 0],
-                    [0, np.sin(np.pi), np.cos(np.pi), 0],
-                    [0, 0, 0, 1]])
-        return transform @ T
-
-    cam_pose = np.eye(4)
-    cam_pose[:3, 3] = sensor_state.position
-    R = quat_to_magnum(sensor_state.rotation).to_matrix()
-    cam_pose[:3, :3] = R
-    c2w = to_opengl_transform(cam_pose)
-    # w2c = np.linalg.inv(c2w)
-
-    with open(f'{output_path}/traj.txt', 'a') as f:
-        for e in c2w.flatten():
-            f.write(f"{e:.6f} ")
-        f.write("\n")
-
 
 def save_observation(action, rgb_obs, semantic_obs, depth_obs, output_path):
-    
     ##  get rgb, depth, semantic images
     rgb_img = Image.fromarray(rgb_obs, mode="RGBA")
     semantic_img, depth_img = None, None
@@ -191,7 +66,7 @@ def save_observation(action, rgb_obs, semantic_obs, depth_obs, output_path):
     # depth_path = os.path.join(depth_dir, f"observation_depth_{action}.png")
     depth_file = os.path.join(depth_dir, f"observation_depth_{action}.npy")
     semantic_path = os.path.join(semantic_dir, f"observation_semantic_{action}.png")
-    # composite_path = os.path.join(composite_dir, f"{str(action).zfill(5)}.png")
+    # composite_path = os.path.join(composite_dir, f"observation_{str(action).zfill(5)}.png")
 
     rgb_img.save(rgb_path)
     # depth_img.save(depth_path)
@@ -240,7 +115,7 @@ def make_cfg(settings):
     # Here you can specify the amount of displacement in a forward action and the turn angle
     make_action_spec = habitat_sim.agent.ActionSpec
     make_actuation_spec = habitat_sim.agent.ActuationSpec
-    MOVE, LOOK = 0.07, 1.5
+    MOVE, LOOK = 0.07, 2.8
     
     # all of our possible actions' names
     action_list = [
@@ -305,7 +180,43 @@ def load_action(action_path="action.txt"):
         actions = [x.strip() for x in lines]
         return actions
     
-def semantic_habitat_excute(sim_settings, action_path, output_path, start_position, start_rotation, feq=3):
+def set_agent_to_navmesh_center(sim):
+    # 获取场景AABB中心
+    scene_graph = sim.get_active_scene_graph()
+    aabb = scene_graph.get_root_node().cumulative_bb
+    center = aabb.center()
+
+    # 获取NavMesh并找到最近的可导航点
+    navmesh = sim.pathfinder
+    if not navmesh.is_loaded:
+        raise RuntimeError("NavMesh未加载！请确保场景支持路径规划。")
+
+    # 将中心点投影到NavMesh上
+    center_on_navmesh = navmesh.snap_point(center)
+
+    # 设置Agent状态
+    agent_state = habitat_sim.AgentState()
+    agent_state.position = center_on_navmesh
+    agent_state.rotation = np.quaternion(1, 0, 0, 0)
+    agent = sim.initialize_agent(0, agent_state)
+    return agent
+
+def navmesh_config_and_recompute(cfg, agent_id, sim):
+    """
+    This method is setup to be overridden in for setting config accessibility
+    in inherited classes.
+    """
+    navmesh_settings = habitat_sim.NavMeshSettings()
+    navmesh_settings.set_defaults()
+    navmesh_settings.agent_height = cfg.agents[agent_id].height
+    navmesh_settings.agent_radius = cfg.agents[agent_id].radius
+    navmesh_settings.include_static_objects = True
+    sim.recompute_navmesh(
+        sim.pathfinder,
+        navmesh_settings,
+    )  
+          
+def semantic_habitat_excute(sim_settings, action_path, output_path, start_position, start_rotation, feq=1):
 
     # Create the simulator configuration
     cfg = make_cfg(sim_settings)
@@ -318,31 +229,34 @@ def semantic_habitat_excute(sim_settings, action_path, output_path, start_positi
         agent_state.position = np.array(start_position)
         agent_state.rotation = np.quaternion(start_rotation[0], start_rotation[1], start_rotation[2], start_rotation[3])
         agent.set_state(agent_state)
+    else:
+        # using default position with navmesh
+        # compute NavMesh if not already loaded by the scene.
+        if (not sim.pathfinder.is_loaded and cfg.sim_cfg.scene_id.lower() != "none"):
+            navmesh_config_and_recompute(cfg, 0, sim)
+        agent = set_agent_to_navmesh_center(sim)
     
     # Get agent state
     agent_state = agent.get_state()
     print("agent_state: position", agent_state.position, "rotation", agent_state.rotation)
     
     # Get intrinsics
-    # get_camera_intrinsics(sim, "color_sensor")
-    # print("Camera intrinsics: ")
-    # print(get_camera_intrinsics(sim, "color_sensor"))
-    
-    # Save intrinsics to a file
     intrinsics = get_camera_intrinsics(sim, "color_sensor")
-    intrinsics_file = os.path.join(output_path, "camera_intrinsics.txt")
-    with open(intrinsics_file, "w") as f:
-        for row in intrinsics:
-            f.write(" ".join(f"{value:.3f}" for value in row) + "\n")
-    print(f"Camera intrinsics saved to {intrinsics_file}")
+    print("Camera intrinsics: ")
+    print(intrinsics)
 
     # Get the action queue
-    actions = load_action(action_path)
+    if action_path is not None:
+        actions = load_action(action_path)
+    
+    # excute actions
     action_idx = 0
     img_list = []
     cam_poses =[]
-    for action in actions:
-        action_idx += 1
+    # for action in actions:
+    for action_idx in range(128):
+        action = "turn_right"
+        # action_idx += 1
         print("action", action)
         observations = sim.step(action)
         if action_idx % feq == 0:
@@ -379,12 +293,14 @@ if __name__ == "__main__":
         "--scene",
         default="sc1_staging_00",
         type=str,
+        required=True,
         help='scene/stage file to load (default: "./data/test_assets/scenes/simple_room.glb")',
     )
     parser.add_argument(
         "--dataset",
         default="data/replica_cad_baked_lighting/replicaCAD_baked.scene_dataset_config.json",
         type=str,
+        required=True,
         metavar="DATASET",
         help='dataset configuration file to use (default: "default")',
     )
@@ -397,6 +313,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output_path",
         type=str,
+        required=True,
         default="output/oLBMNvg9in8/",
         help="Composite files that the batch renderer will use in-place of simulation assets to improve memory usage and performance. If none is specified, the original scene files will be loaded from disk.",
     )
@@ -454,13 +371,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "--start_position", 
         type=str, 
-        required=True, 
         help="Start pose as a string"
     )
     parser.add_argument(
         "--start_rotation", 
         type=str, 
-        required=True, 
         help="Start rotation as a string"
     )
     
@@ -470,8 +385,15 @@ if __name__ == "__main__":
     print(f"output_path = {args.output_path}")
     if not os.path.exists(args.output_path):
         os.makedirs(args.output_path, exist_ok=True)
-    start_position = list(map(float, args.start_position.strip('[]').split(',')))
-    start_rotation = list(map(float, args.start_rotation.strip('[]').split(',')))
+    if args.start_position is not None:
+        start_position = list(map(float, args.start_position.strip('[]').split(',')))
+    else:
+        start_position = None
+
+    if args.start_rotation is not None:
+        start_rotation = list(map(float, args.start_rotation.strip('[]').split(',')))
+    else:
+        start_rotation = None
 
     # Setting up sim_settings
     sim_settings: Dict[str, Any] = default_sim_settings

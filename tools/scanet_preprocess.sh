@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 定义输入和输出目录
-input_dir="../data/scanet/high_res/scans"
+input_dir="../data/datasets/Scannet/scans"
 for scene_dir in "$input_dir"/*/; do
     scene_dir="${scene_dir%/}"
     if [ -d "$scene_dir" ]; then

@@ -1,8 +1,8 @@
 import cv2
 import os
 
-img_dir = "output/scanet/00000/images"
-output_video = "output/scanet/00000/images.mp4"
+img_dir = "output/scanet/new/scene0000_00/composite"
+output_video = "output/scanet/new/scene0000_00/composite.mp4"
 
 # 获取所有图片并按文件名排序
 images = sorted([img for img in os.listdir(img_dir) if img.endswith(".png")])
