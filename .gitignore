@@ -1,5 +1,5 @@
 data/*
-output/*
+*output*
 *temp_file/*
 *.DS*
 *.pyc

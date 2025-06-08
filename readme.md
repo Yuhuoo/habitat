@@ -1,7 +1,19 @@
-# A Data Collection Tool Based on Habitat-sim
-**Target:** To optimize the rendering efficiency during data collection, a method of using a local machine (MAC air m1) to visualize the movement path of the mobile robot, and then uploading the path (action.txt) to the server (Ubuntu) for rendering is adopted.
+# Habitat Data Collection Tool
 
-## Get Started
+**Description**: A tool for efficient data collection (Colmop-style) using Habitat-sim, designed to optimize rendering performance by separating path planning (local) from rendering (server).
+
+## Key Features
+- Local path visualization on MacBook Air M1
+- Server-based rendering on Ubuntu
+- Remote Camera pose visualization
+
+## TODO
+- 3DGS training and remote visualization
+
+## Installation
+Reference from https://github.com/facebookresearch/habitat-sim
+
+## Usage
 - 1、Visualize and Record the Movement Path on the Local Machine
 ```bash
 bash client.sh
@@ -20,4 +32,9 @@ bash server.sh
 ## Visualize the camera pose
 ```bash
 bash visualize.sh
+```
+
+## Load and merge point cloud for a complete scene
+```bash
+python tools/load_and_merge.py
 ```
