@@ -77,12 +77,6 @@ class HabitatSimInteractiveViewer(Application):
         Application.__init__(self, configuration)
         self.fps: float = 30.0
 
-        # Compute environment camera resolution based on the number of environments to render in the window.
-        grid_size: mn.Vector2i = ReplayRenderer.environment_grid_size(self.num_env)
-        camera_resolution: mn.Vector2 = mn.Vector2(self.framebuffer_size) / mn.Vector2(grid_size)
-        self.sim_settings["width"] = camera_resolution[0]
-        self.sim_settings["height"] = camera_resolution[1]
-
         # draw Bullet debug line visualizations (e.g. collision meshes)
         self.debug_bullet_draw = False
         # draw active contact point debug line visualizations
@@ -94,7 +88,6 @@ class HabitatSimInteractiveViewer(Application):
         self.cached_urdf = ""
 
         # set up our movement map
-
         key = Application.KeyEvent.Key
         self.pressed = {
             key.UP: False,
@@ -194,27 +187,15 @@ class HabitatSimInteractiveViewer(Application):
         ):
             self.navmesh_config_and_recompute()
             
-        def set_agent_to_navmesh_center():
-            # 获取场景AABB中心
-            scene_graph = self.sim.get_active_scene_graph()
-            aabb = scene_graph.get_root_node().cumulative_bb
-            center = aabb.center()
-
-            # 获取NavMesh并找到最近的可导航点
-            navmesh = self.sim.pathfinder
-            if not navmesh.is_loaded:
-                raise RuntimeError("NavMesh未加载！请确保场景支持路径规划。")
-
-            # 将中心点投影到NavMesh上
-            center_on_navmesh = navmesh.snap_point(center)
-
-            # 设置Agent状态
-            agent_state = habitat_sim.AgentState()
-            agent_state.position = center_on_navmesh
-            agent_state.rotation = np.quaternion(1, 0, 0, 0)
-            agent = self.sim.initialize_agent(0, agent_state)
-        set_agent_to_navmesh_center()
+        # set default position
+        self.set_agent_to_navmesh_center()
+           
+        # get intrinsics
+        intrinsics = self.get_camera_intrinsics(self.sim, "color_sensor", self.saved_path)
+        print("intrinsics")
+        print(intrinsics)
         
+        # help text print
         self.time_since_last_simulation = 0.0
         LoggingContext.reinitialize_from_env()
         logger.setLevel("INFO")
@@ -302,7 +283,6 @@ class HabitatSimInteractiveViewer(Application):
         # Agent actions should occur at a fixed rate per second
         self.time_since_last_simulation += Timer.prev_frame_duration
         num_agent_actions: int = self.time_since_last_simulation * agent_acts_per_sec
-        # import pdb; pdb.set_trace()
         self.move_and_look(int(num_agent_actions))
 
         # Occasionally a frame will pass quicker than 1/60 seconds
@@ -466,10 +446,7 @@ class HabitatSimInteractiveViewer(Application):
             self.sim = self.tiled_sims[0]
         else:  # edge case
             for i in range(self.num_env):
-                if (
-                    self.tiled_sims[i].config.sim_cfg.scene_id
-                    == self.cfg.sim_cfg.scene_id
-                ):
+                if (self.tiled_sims[i].config.sim_cfg.scene_id == self.cfg.sim_cfg.scene_id):
                     # we need to force a reset, so change the internal config scene name
                     self.tiled_sims[i].config.sim_cfg.scene_id = "NONE"
                 self.tiled_sims[i].reconfigure(self.cfg)
@@ -492,18 +469,12 @@ class HabitatSimInteractiveViewer(Application):
         if self.enable_batch_renderer and self.replay_renderer is None:
             self.replay_renderer_cfg = ReplayRendererConfiguration()
             self.replay_renderer_cfg.num_environments = self.num_env
-            self.replay_renderer_cfg.standalone = (
-                False  # Context is owned by the GLFW window
-            )
-            self.replay_renderer_cfg.sensor_specifications = self.cfg.agents[
-                self.agent_id
-            ].sensor_specifications
+            self.replay_renderer_cfg.standalone = False  # Context is owned by the GLFW window
+            self.replay_renderer_cfg.sensor_specifications = self.cfg.agents[self.agent_id].sensor_specifications
             self.replay_renderer_cfg.gpu_device_id = self.cfg.sim_cfg.gpu_device_id
             self.replay_renderer_cfg.force_separate_semantic_scene_graph = False
             self.replay_renderer_cfg.leave_context_with_background_renderer = False
-            self.replay_renderer = ReplayRenderer.create_batch_replay_renderer(
-                self.replay_renderer_cfg
-            )
+            self.replay_renderer = ReplayRenderer.create_batch_replay_renderer(self.replay_renderer_cfg)
             # Pre-load composite files
             if sim_settings["composite_files"] is not None:
                 for composite_file in sim_settings["composite_files"]:
@@ -512,11 +483,27 @@ class HabitatSimInteractiveViewer(Application):
         Timer.start()
         self.step = -1
 
-        # get intrinsics
-        intrinsics = self.get_camera_intrinsics(self.sim, "color_sensor")
-        print("intrinsics")
-        print(intrinsics)
+    def set_agent_to_navmesh_center(self,):
+        # 获取场景AABB中心
+        scene_graph = self.sim.get_active_scene_graph()
+        aabb = scene_graph.get_root_node().cumulative_bb
+        center = aabb.center()
 
+        # 获取NavMesh并找到最近的可导航点
+        navmesh = self.sim.pathfinder
+        if not navmesh.is_loaded:
+            raise RuntimeError("NavMesh未加载！请确保场景支持路径规划。")
+
+        # 将中心点投影到NavMesh上
+        center_on_navmesh = navmesh.snap_point(center)
+
+        # 设置Agent状态
+        agent_state = habitat_sim.AgentState()
+        agent_state.position = center_on_navmesh
+        agent_state.rotation = np.quaternion(1, 0, 0, 0)
+        agent = self.sim.initialize_agent(0, agent_state)
+        return agent
+            
     def render_batch(self):
         """
         This method updates the replay manager with the current state of environments and renders them.
@@ -541,12 +528,12 @@ class HabitatSimInteractiveViewer(Application):
 
         return np.vectorize(mapping_dict.get)(arr)
     
-    def save_color_observation(self, obs, total_frames):
-        os.makedirs('test_output', exist_ok=True)
-        os.makedirs('test_output/color', exist_ok=True)
+    def save_color_observation(self, saved_path, obs, frames_idx):
+        os.makedirs(saved_path, exist_ok=True)
+        os.makedirs(f'{saved_path}/color', exist_ok=True)
         color_obs = obs["color_sensor"]
         color_img = Image.fromarray(color_obs, mode="RGBA")
-        color_img.save("test_output/color/%d.png" % total_frames)
+        color_img.save(f"{saved_path}/color/{frames_idx}.png")
     
     def save_semantic_observation(self, obs, total_frames):
         semantic_obs = obs["semantic_sensor"]
@@ -558,60 +545,25 @@ class HabitatSimInteractiveViewer(Application):
         semantic_img = semantic_img.convert("RGBA")
         semantic_img.save("test_output/sem/%d.png" % total_frames)
 
-    def save_depth_observation(self, obs, total_frames):
-        os.makedirs('test_output', exist_ok=True)
-        os.makedirs('test_output/depth', exist_ok=True)
+    def save_depth_observation(self, saved_path, obs, frames_idx):
+        os.makedirs(saved_path, exist_ok=True)
+        os.makedirs(f'{saved_path}/depth', exist_ok=True)
         depth_obs = obs["depth_sensor"]
-        depth = (depth_obs * 1000).astype(int) # depth == 0 also means inf
-
-        f_path = "test_output/depth/%d.npy"%total_frames
+        depth = depth_obs.astype(float)
+        depth[depth == 0] = np.inf # depth == 0 also means inf
+        
+        f_path = f"{saved_path}/depth/{frames_idx}.npy"
         np.save(f_path, depth)
 
-        depth_img = Image.fromarray((depth_obs / 10 * 255).astype(np.uint8), mode="L")
-        f_path_img = "test_output/depth/%d.png"%total_frames
-        depth_img.save(f_path_img)
-
-    def to_opengl_transform(self, transform=None):
-        if transform is None:
-            transform = np.eye(4)
-        T = np.array([[1, 0, 0, 0],
-                    [0, np.cos(np.pi), -np.sin(np.pi), 0],
-                    [0, np.sin(np.pi), np.cos(np.pi), 0],
-                    [0, 0, 0, 1]])
-        return transform @ T
+        # depth_img = Image.fromarray((depth_obs / 10 * 255).astype(np.uint8), mode="L")
+        # f_path_img = "test_output/depth/%d.png"%total_frames
+        # depth_img.save(f_path_img)
     
-    def save_traj(self):
-        state = self.sim.get_agent(0).get_state()
-        sensor_state = state.sensor_states['color_sensor']
-        print(sensor_state.rotation, state.rotation)
-
-        cam_pose = np.eye(4)
-        cam_pose[:3, 3] = sensor_state.position
-        R = quat_to_magnum(sensor_state.rotation).to_matrix()
-        cam_pose[:3, :3] = R
-        cam_pose = self.to_opengl_transform(cam_pose)
-        print(cam_pose[:3,3])
-        # cam_pose = np.linalg.inv(cam_pose)
-
-        with open('test_output/traj.txt', 'a') as f:
-            for e in cam_pose.flatten():
-                f.write(f"{e:.6f} ")
-            f.write("\n")
-            # f.write(" ".join([str(i) for i in cam_pose.flatten().tolist()]) + '\n')
-
-        with jsonlines.open('test_output/traj.json', mode='a') as writer:
-            sim_pos = sensor_state.position
-            sim_rot = quaternion.as_float_array(sensor_state.rotation)
-            writer.write({
-                "habitat_cam_pos": {"position": sim_pos.tolist(), "rotation":sim_rot.tolist()},
-                "opengl_cam_pose": cam_pose.tolist()
-            })
-
     def save_action(self, action, output_path='test_output/action.txt'):
         with open(output_path, 'a') as f:
             f.write(action + "\n")
       
-    def get_camera_intrinsics(self, sim, sensor_name):
+    def get_camera_intrinsics(self, sim, sensor_name, output_path):
         # Get render camera
         render_camera = sim._sensors[sensor_name]._sensor_object.render_camera
 
@@ -632,27 +584,36 @@ class HabitatSimInteractiveViewer(Application):
             [0, fy, cy],
             [0,  0,  1]
         ])
+        
+        intrinsics_file = os.path.join(output_path, "intrinsics.txt")
+        with open(intrinsics_file, "w") as f:
+            for row in intrinsics:
+                f.write(" ".join(f"{value:.3f}" for value in row) + "\n")
+        print(f"Camera intrinsics saved to {intrinsics_file}")
+        
         return intrinsics
 
-
-    # 改进后的存储函数
-    def record_state(self, position, rotation, filename="states.json"):
-        """带数据类型验证的存储"""
-        # 确保转换为Python原生类型
-        state = {
-            "position": [float(x) for x in position],  # 显式转换为float列表
-            "rotation": [
-                float(rotation.w),
-                float(rotation.x),
-                float(rotation.y),
-                float(rotation.z)
-            ]
-        }
+    def record_traj(self, position, rotation, saved_path):
+        """两种格式格式位姿保存"""
         
-        with open(filename, "a") as f:
-            json.dump(state, f, ensure_ascii=False)
-            f.write("\n")  # 必须换行
-              
+        ## 格式1: [x, y, z, qx, qy, qz, qw]（TUM 格式，适合 SLAM 工具如 ORB-SLAM）
+        pose = np.array([
+            position[0], position[1], position[2],
+            rotation.x, rotation.y, rotation.z, rotation.w
+        ])
+        pose = ' '.join(map(str, pose))
+        
+        # # 格式2: 4x4 变换矩阵 [R | t]
+        # rotation_matrix = quaternion.as_rotation_matrix(rotation)
+        # pose_matrix = np.eye(4)
+        # pose_matrix[:3, :3] = rotation_matrix
+        # pose_matrix[:3, 3] = position
+    
+        # 增量添加
+        with open(f"{saved_path}/pose.txt", "a") as f:
+            f.write(pose)
+            f.write("\n")
+
     def move_and_look(self, repetitions: int) -> None:
         """
         This method is called continuously with `self.draw_event` to monitor
@@ -678,19 +639,16 @@ class HabitatSimInteractiveViewer(Application):
             current_position = sensor_state.position
             current_rotation = sensor_state.rotation
             print(f"action:{x}, camera position:{current_position}, camera rotation:{current_rotation}")
-            state = agent.get_state()
-            current_position = state.position
-            current_rotation = state.rotation
-            print(f"action:{x}, agent position:{current_position}, agent rotation:{current_rotation}")
             print("========================================")
             action_path = os.path.join(self.saved_path, "action.txt")
             self.save_action(x, action_path)
+            self.record_traj(current_position, current_rotation, self.saved_path)
 
-            # observations = self.sim.get_sensor_observations()
-            # self.save_color_observation(observations, self.obs_save_idx)
+            observations = self.sim.get_sensor_observations()
+            self.save_color_observation(self.saved_path, observations, self.obs_save_idx)
             # self.save_semantic_observation(observations, self.obs_save_idx)
-            # self.save_depth_observation(observations, self.obs_save_idx)
-            # self.obs_save_idx += 1
+            self.save_depth_observation(self.saved_path, observations, self.obs_save_idx)
+            self.obs_save_idx += 1
 
     def invert_gravity(self) -> None:
         """
@@ -1472,6 +1430,8 @@ if __name__ == "__main__":
     sim_settings["composite_files"] = args.composite_files
     sim_settings["window_width"] = args.width
     sim_settings["window_height"] = args.height
+    sim_settings["width"] = args.width
+    sim_settings["height"] = args.height
     sim_settings["sensor_height"] = args.sensor_height
     sim_settings["default_agent_navmesh"] = False
     sim_settings["enable_hbao"] = args.hbao
