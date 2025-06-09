@@ -1,6 +1,6 @@
 # Habitat Data Collection Tool
 
-**Description**: A tool for efficient data collection (Colmop-style) using Habitat-sim, designed to optimize rendering performance by separating path planning (local) from rendering (server).
+**Description**: A efficient data collection tool (Colmap-style) based on Habitat-sim. The system optimizes rendering performance by decoupling path planning (local client) from rendering (server).
 
 ## Key Features
 - Local path visualization on MacBook Air M1
@@ -8,10 +8,19 @@
 - Remote Camera pose visualization
 
 ## TODO
-- 3DGS training and remote visualization
+- [ ] Integrate 3D Gaussian Splatting (3DGS) training pipeline
+- [ ] Implement remote visualization for 3DGS results
 
-## Installation
-Reference from https://github.com/facebookresearch/habitat-sim
+## Getting Started
+
+### Prerequisites
+- Habitat-sim installation (see [official documentation](https://github.com/facebookresearch/habitat-sim))
+
+### Getting this project
+```bash
+git clone --recursive git@github.com:Yuhuoo/habitat.git
+cd habitat
+```
 
 ## Usage
 - 1、Visualize and Record the Movement Path on the Local Machine
@@ -29,9 +38,14 @@ scp output/action.txt xxx@ip:xxx
 bash server.sh
 ```
 
-## Visualize the camera pose
+## ScanNet Preprocessing
+For ScanNet datasets, preprocess point clouds first:
 ```bash
-bash visualize.sh
+bash tools/scanet_preprocess.sh
+```
+## Camera Pose Visualization
+```bash
+bash tools/visualize.sh
 ```
 
 ## Load and merge point cloud for a complete scene

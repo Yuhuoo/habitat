@@ -7,7 +7,7 @@ from PIL import Image
 from colmap_loader import read_extrinsics_text, read_intrinsics_text
 
 # 设置路径
-data_dir = "output/scanet/new/scene0000_00"
+data_dir = "output/scanet/new/scene0084_00"
 pose_file = os.path.join(data_dir, "sparse/0/images.txt")
 intrinsics_file = os.path.join(data_dir, "sparse/0/cameras.txt")
 depth_dir = os.path.join(data_dir, "depth")
