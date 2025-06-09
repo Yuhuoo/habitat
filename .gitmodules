@@ -1,0 +1,6 @@
+[submodule "submodules/remote-viewer-utils"]
+	path = submodules/remote-viewer-utils
+	url = https://github.com/Yuhuoo/remote-viewer-utils.git
+[submodule "submodules/habitat-sim"]
+	path = submodules/habitat-sim
+	url = https://github.com/facebookresearch/habitat-sim.git
