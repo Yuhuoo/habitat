@@ -8,7 +8,7 @@ import os
 import sys
 current_script_path = os.path.abspath(__file__)
 current_script_dir = os.path.dirname(current_script_path)
-submodules_dir = os.path.join(current_script_dir, 'submodules')
+submodules_dir = os.path.join(current_script_dir, '../submodules')
 sys.path.append(submodules_dir)
 
 import ctypes
@@ -17,8 +17,7 @@ import string
 import time
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple
-import json
-
+from color_utils import Scanetv2_40_colors_rgb
 flags = sys.getdlopenflags()
 sys.setdlopenflags(flags | ctypes.RTLD_GLOBAL)
 
@@ -30,7 +29,7 @@ import habitat_sim
 from habitat_sim import ReplayRenderer, ReplayRendererConfiguration, physics
 from habitat_sim.logging import LoggingContext, logger
 from habitat_sim.utils.settings import default_sim_settings
-from habitat_sim.utils.common import quat_to_magnum, quat_from_angle_axis, d3_40_colors_rgb
+from habitat_sim.utils.common import quat_from_angle_axis
 from PIL import Image
 import numpy as np
 import jsonlines
@@ -54,11 +53,12 @@ class HabitatSimInteractiveViewer(Application):
     # CPU and GPU usage info
     DISPLAY_FONT_SIZE = 16.0
 
-    def __init__(self, sim_settings: Dict[str, Any], saved_path, start_position, start_rotation) -> None:
+    def __init__(self, sim_settings: Dict[str, Any], saved_path, start_position, start_rotation, debug) -> None:
         self.obs_save_idx = 0
         self.total_frames = 0
         self.saved_path = saved_path
         self.sim_settings: Dict[str:Any] = sim_settings
+        self.debug = debug
 
         self.enable_batch_renderer: bool = self.sim_settings["enable_batch_renderer"]
         self.num_env: int = (
@@ -179,17 +179,16 @@ class HabitatSimInteractiveViewer(Application):
         self.replay_renderer: Optional[ReplayRenderer] = None
         self.reconfigure_sim(start_position, start_rotation)
         self.debug_semantic_colors = {}
-
-        # compute NavMesh if not already loaded by the scene.
-        if (
-            not self.sim.pathfinder.is_loaded
-            and self.cfg.sim_cfg.scene_id.lower() != "none"
-        ):
-            self.navmesh_config_and_recompute()
-            
-        # set default position
-        self.set_agent_to_navmesh_center()
-           
+        if start_position is None and start_rotation is None:
+            # compute NavMesh if not already loaded by the scene.
+            if (
+                not self.sim.pathfinder.is_loaded
+                and self.cfg.sim_cfg.scene_id.lower() != "none"
+            ):
+                self.navmesh_config_and_recompute()
+                
+            # set default position
+            self.set_agent_to_navmesh_center()
         # get intrinsics
         intrinsics = self.get_camera_intrinsics(self.sim, "color_sensor", self.saved_path)
         print("intrinsics")
@@ -535,15 +534,15 @@ class HabitatSimInteractiveViewer(Application):
         color_img = Image.fromarray(color_obs, mode="RGBA")
         color_img.save(f"{saved_path}/color/{frames_idx}.png")
     
-    def save_semantic_observation(self, obs, total_frames):
+    def save_semantic_observation(self, saved_path, obs, total_frames):
         semantic_obs = obs["semantic_sensor"]
-        os.makedirs('test_output', exist_ok=True)
-        os.makedirs('test_output/sem', exist_ok=True)
+        os.makedirs(saved_path, exist_ok=True)
+        os.makedirs(f'{saved_path}/sem', exist_ok=True)
         semantic_img = Image.new("P", (semantic_obs.shape[1], semantic_obs.shape[0]))
-        semantic_img.putpalette(d3_40_colors_rgb.flatten())
+        semantic_img.putpalette(Scanetv2_40_colors_rgb.flatten())
         semantic_img.putdata((semantic_obs.flatten() % 40).astype(np.uint8))
         semantic_img = semantic_img.convert("RGBA")
-        semantic_img.save("test_output/sem/%d.png" % total_frames)
+        semantic_img.save(f"{saved_path}/sem/%d.png" % total_frames)
 
     def save_depth_observation(self, saved_path, obs, frames_idx):
         os.makedirs(saved_path, exist_ok=True)
@@ -644,11 +643,12 @@ class HabitatSimInteractiveViewer(Application):
             self.save_action(x, action_path)
             self.record_traj(current_position, current_rotation, self.saved_path)
 
-            observations = self.sim.get_sensor_observations()
-            self.save_color_observation(self.saved_path, observations, self.obs_save_idx)
-            # self.save_semantic_observation(observations, self.obs_save_idx)
-            self.save_depth_observation(self.saved_path, observations, self.obs_save_idx)
-            self.obs_save_idx += 1
+            if self.debug:
+                observations = self.sim.get_sensor_observations()
+                self.save_color_observation(self.saved_path, observations, self.obs_save_idx)
+                self.save_semantic_observation(self.saved_path, observations, self.obs_save_idx)
+                self.save_depth_observation(self.saved_path, observations, self.obs_save_idx)
+                self.obs_save_idx += 1
 
     def invert_gravity(self) -> None:
         """
@@ -1397,6 +1397,11 @@ if __name__ == "__main__":
         metavar="DATASET",
         help='saved path',
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="save the rgb, semantic, depth for visulization"
+    )
     
     args = parser.parse_args()
     
@@ -1439,4 +1444,4 @@ if __name__ == "__main__":
     sim_settings['semantic_sensor'] = True
     sim_settings['depth_sensor'] = True
     # start the application
-    HabitatSimInteractiveViewer(sim_settings, args.saved_path, start_position, start_rotation).exec()
+    HabitatSimInteractiveViewer(sim_settings, args.saved_path, start_position, start_rotation, args.debug).exec()
