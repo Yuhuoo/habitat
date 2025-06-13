@@ -9,9 +9,8 @@ import numpy as np
 from PIL import Image
 from typing import Any, Dict
 
+from color_utils import Scanetv2_40_colors_rgb
 import habitat_sim
-from habitat_sim.utils.common import d3_40_colors_rgb
-from habitat_sim.utils.common import quat_to_magnum
 from habitat_sim.utils.settings import default_sim_settings
 from scipy.spatial.transform import Rotation
 
@@ -37,7 +36,7 @@ def save_observation(action, rgb_obs, semantic_obs, depth_obs, output_path):
     semantic_img, depth_img = None, None
     if semantic_obs.size != 0:
         semantic_img = Image.new("P", (semantic_obs.shape[1], semantic_obs.shape[0]))
-        semantic_img.putpalette(d3_40_colors_rgb.flatten())
+        semantic_img.putpalette(Scanetv2_40_colors_rgb.flatten())
         semantic_img.putdata((semantic_obs.flatten() % 40).astype(np.uint8))
         semantic_img = semantic_img.convert("RGBA")
     # if depth_obs.size != 0:
@@ -244,33 +243,48 @@ def semantic_habitat_excute(sim_settings, action_path, output_path, start_positi
     intrinsics = get_camera_intrinsics(sim, "color_sensor")
     print("Camera intrinsics: ")
     print(intrinsics)
-
-    # Get the action queue
-    if action_path is not None:
-        actions = load_action(action_path)
     
     # excute actions
     action_idx = 0
     img_list = []
     cam_poses =[]
-    # for action in actions:
-    for action_idx in range(128):
-        action = "turn_right"
-        # action_idx += 1
-        print("action", action)
-        observations = sim.step(action)
-        if action_idx % feq == 0:
-            rgb = observations["color_sensor"]
-            semantic = observations["semantic_sensor"]
-            depth = observations["depth_sensor"]
-            save_observation(action_idx, rgb, semantic, depth, output_path)
+    
+    # Get the action queue
+    if action_path is not None:
+        actions = load_action(action_path)
+        for action in actions:
+            action_idx += 1
+            print("action", action)
+            observations = sim.step(action)
+            if action_idx % feq == 0:
+                rgb = observations["color_sensor"]
+                semantic = observations["semantic_sensor"]
+                depth = observations["depth_sensor"]
+                save_observation(action_idx, rgb, semantic, depth, output_path)
 
-            # For colmap-style svaing
-            img_list.append(f"observation_rgb_{action_idx}.png")
-            sensor_state = agent.get_state().sensor_states['color_sensor']
-            position = sensor_state.position
-            rotation = sensor_state.rotation
-            cam_poses.append([rotation, position])
+                # For colmap-style svaing
+                img_list.append(f"observation_rgb_{action_idx}.png")
+                sensor_state = agent.get_state().sensor_states['color_sensor']
+                position = sensor_state.position
+                rotation = sensor_state.rotation
+                cam_poses.append([rotation, position])
+    else:
+        for action_idx in range(128):
+            action = "turn_right"
+            print("action", action)
+            observations = sim.step(action)
+            if action_idx % feq == 0:
+                rgb = observations["color_sensor"]
+                semantic = observations["semantic_sensor"]
+                depth = observations["depth_sensor"]
+                save_observation(action_idx, rgb, semantic, depth, output_path)
+
+                # For colmap-style svaing
+                img_list.append(f"observation_rgb_{action_idx}.png")
+                sensor_state = agent.get_state().sensor_states['color_sensor']
+                position = sensor_state.position
+                rotation = sensor_state.rotation
+                cam_poses.append([rotation, position])
             
     # import pdb; pdb.set_trace()
     # create colmap-style directory
@@ -307,7 +321,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "--action_path",
         type=str,
-        default="data/scene_datasets/oLBMNvg9in8/action.txt",
         help="Composite files that the batch renderer will use in-place of simulation assets to improve memory usage and performance. If none is specified, the original scene files will be loaded from disk.",
     )
     parser.add_argument(
