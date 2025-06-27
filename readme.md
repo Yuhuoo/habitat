@@ -1,6 +1,6 @@
 # Habitat Data Collection Tool
 
-**Description**: A efficient data collection tool (Colmap-style) based on Habitat-sim. The system optimizes rendering performance by decoupling path planning (local client) from rendering (server).
+**Description**: An efficient data collection tool (Colmap-style) based on Habitat-sim. The system optimizes rendering performance by decoupling path planning (local client) from rendering (server).
 
 ## Key Features
 - Local path visualization on MacBook Air M1
