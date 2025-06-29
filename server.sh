@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ####### 指定场景
-# python src/viewer_server.py \
+# python src/data_collect/viewer_server.py \
 #     --scene data/datasets/Scannet/scans/scene0000_00/scene0000_00_vh_clean.glb \
 #     --dataset data/datasets/Scannet/scene_dataset_config.json \
 #     --action_path data/datasets/Scannet/scans/scene0000_00/action.txt \
@@ -10,7 +10,7 @@
 #     --feq 10
 
 ####### 指定场景和初始位置
-python src/viewer_server.py \
+python src/data_collect/viewer_server.py \
     --scene data/datasets/Scannet/scans/scene0046_00/scene0046_00_vh_clean.glb \
     --dataset data/datasets/Scannet/scene_dataset_config.json \
     --action_path data/datasets/Scannet/scans/scene0046_00/action.txt \
@@ -20,7 +20,7 @@ python src/viewer_server.py \
     --sensor_height 0.0 \
     --feq 4
 
-# python src/viewer_server.py \
+# python src/data_collect/viewer_server.py \
 #     --scene data/datasets/Scannet/scans/scene0050_00/scene0050_00_vh_clean.glb \
 #     --dataset data/datasets/Scannet/scene_dataset_config.json \
 #     --action_path data/datasets/Scannet/scans/scene0050_00/action.txt \
@@ -31,7 +31,7 @@ python src/viewer_server.py \
 #     --feq 4
 # zip -q -r output/matterport3d/oLBMNvg9in8/second.zip output/matterport3d/oLBMNvg9in8/second
 
-# python src/viewer_server.py \
+# python src/data_collect/viewer_server.py \
 #     --scene data/datasets/Scannet/scans/scene0084_00/scene0084_00_vh_clean.glb \
 #     --dataset data/datasets/Scannet/scene_dataset_config.json \
 #     --action_path data/datasets/Scannet/scans/scene0084_00/action.txt \
@@ -52,7 +52,7 @@ python src/viewer_server.py \
 # echo "Using scene: $glb_path"
 # echo "Using config: $config_path"
 # echo "Output will be saved to: $obs_saved_path"
-# python src/viewer_server.py \
+# python src/data_collect/viewer_server.py \
 #     --scene $glb_path \
 #     --dataset $config_path \
 #     --output_path $obs_saved_path \
@@ -72,7 +72,7 @@ python src/viewer_server.py \
 #     echo "Using scene: $glb_path"
 #     echo "Using config: $config_path"
 #     echo "Output will be saved to: $obs_saved_path"
-#     python src/viewer_server.py \
+#     python src/data_collect/viewer_server.py \
 #         --scene $glb_path \
 #         --dataset $config_path \
 #         --output_path $obs_saved_path \

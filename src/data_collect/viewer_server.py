@@ -2,7 +2,7 @@ import os
 import sys
 current_script_path = os.path.abspath(__file__)
 current_script_dir = os.path.dirname(current_script_path)
-submodules_dir = os.path.join(current_script_dir, 'submodules')
+submodules_dir = os.path.join(current_script_dir, '../../submodules')
 sys.path.append(submodules_dir)
 
 import numpy as np
