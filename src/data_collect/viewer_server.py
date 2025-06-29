@@ -2,7 +2,7 @@ import os
 import sys
 current_script_path = os.path.abspath(__file__)
 current_script_dir = os.path.dirname(current_script_path)
-submodules_dir = os.path.join(current_script_dir, 'submodules')
+submodules_dir = os.path.join(current_script_dir, '../../submodules')
 sys.path.append(submodules_dir)
 
 import numpy as np
@@ -114,7 +114,7 @@ def make_cfg(settings):
     # Here you can specify the amount of displacement in a forward action and the turn angle
     make_action_spec = habitat_sim.agent.ActionSpec
     make_actuation_spec = habitat_sim.agent.ActuationSpec
-    MOVE, LOOK = 0.07, 2.8
+    MOVE, LOOK = settings["MOVE"], settings["LOOK"]
     
     # all of our possible actions' names
     action_list = [
@@ -391,6 +391,18 @@ if __name__ == "__main__":
         type=str, 
         help="Start rotation as a string"
     )
+    parser.add_argument(
+        "--MOVE",
+        default=0.07,
+        type=float,
+        help="Move stride.",
+    )
+    parser.add_argument(
+        "--LOOK",
+        default=1.5,
+        type=float,
+        help="Look stride.",
+    )
     
     args = parser.parse_args()
     
@@ -419,6 +431,8 @@ if __name__ == "__main__":
     sim_settings["use_default_lighting"] = args.use_default_lighting
     sim_settings["num_environments"] = args.num_environments
     sim_settings["enable_hbao"] = args.hbao
+    sim_settings["MOVE"] = args.MOVE
+    sim_settings["LOOK"] = args.LOOK
 
     semantic_habitat_excute(sim_settings, args.action_path, args.output_path, start_position, start_rotation, args.feq)
 
