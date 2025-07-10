@@ -287,12 +287,3 @@ if __name__ == "__main__":
     
     print(f"处理数据：{args.data_dir}")
     main(args.data_dir, args.trans2scanet)
-    
-    # # 泊松重建
-    # file_path = "output/scanet/test/scene0084_00/sparse/0/points3D.ply"
-    # colored_pcd = o3d.io.read_point_cloud(file_path)
-    # mesh = poisson_reconstruction_with_normal(colored_pcd)
-    # # 保存mesh
-    # mesh_path = file_path.replace(".ply", "_mesh_1.ply")
-    # o3d.io.write_triangle_mesh(mesh_path, mesh)
-    # print(f"泊松重建mesh已保存至: {mesh_path}")

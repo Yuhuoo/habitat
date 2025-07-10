@@ -440,7 +440,19 @@ class HabitatOcc():
         print(f"**********save global occ结束 请到{save_global_occ_folder}查看结果！**********")
 
 if __name__ == "__main__":
-    habitatocc = HabitatOcc("example_data/scanet/scene0000_00")
+    import argparse
+    parser = argparse.ArgumentParser()
+    # optional arguments
+    parser.add_argument(
+        "--data_path",
+        default="example_data/scanet/scene0000_00",
+        type=str,
+        required=True,
+        help='habitat data saved path for occupancy reconstruction.',
+    )
+    args = parser.parse_args()
+    
+    habitatocc = HabitatOcc(args.data_path)
     habitatocc.construct_occ()
     habitatocc.vis_local_occ()
     habitatocc.vis_global_occ()

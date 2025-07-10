@@ -8,7 +8,7 @@ conda activate mayavi || {
 }
 
 # 添加错误检查
-xvfb-run -s "-screen 0 1600x900x24" python src/occupancy/habitatocc.py || {
+xvfb-run -s "-screen 0 1600x900x24" python src/occupancy/habitatocc.py --data_path example_data/demo || {
     echo "ERROR: Command failed with exit code $?"
     exit 1
 }

@@ -1,3 +1,5 @@
+#!/bin/bash
+
 data_dir="../data/scanet/high_res/scans"
 scene="scene0000_00"
 glb_path="$data_dir/$scene/${scene}_vh_clean.glb"
