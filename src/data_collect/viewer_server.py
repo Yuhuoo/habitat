@@ -269,7 +269,7 @@ def semantic_habitat_excute(sim_settings, action_path, output_path, start_positi
                 rotation = sensor_state.rotation
                 cam_poses.append([rotation, position])
     else:
-        for action_idx in range(128):
+        for action_idx in range(360 // int(sim_settings["LOOK"])):
             action = "turn_right"
             print("action", action)
             observations = sim.step(action)

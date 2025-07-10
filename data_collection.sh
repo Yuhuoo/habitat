@@ -1,24 +1,24 @@
 #!/bin/bash
 
-####### 指定场景
-# python src/data_collect/viewer_server.py \
-#     --scene data/datasets/Scannet/scans/scene0000_00/scene0000_00_vh_clean.glb \
-#     --dataset data/datasets/Scannet/scene_dataset_config.json \
-#     --action_path data/datasets/Scannet/scans/scene0000_00/action.txt \
-#     --output_path output/demo/scene0000_00-1 \
-#     --sensor_height 0.7 \
-#     --feq 10
-
-####### 指定场景和初始位置
+###### 指定场景
 python src/data_collect/viewer_server.py \
-    --scene data/datasets/Scannet/scans/scene0046_00/scene0046_00_vh_clean.glb \
+    --scene data/datasets/Scannet/scans/scene0000_00/scene0000_00_vh_clean.glb \
     --dataset data/datasets/Scannet/scene_dataset_config.json \
-    --action_path data/datasets/Scannet/scans/scene0046_00/action.txt \
-    --output_path output/scanet/test/scene0046_00 \
-    --start_position "2.7847664,  1.5457658, -2.013033" \
-    --start_rotation "0.769103646278381, -0.111514739692211, 0.622807800769806, 0.0903028398752213" \
-    --sensor_height 0.0 \
-    --feq 4
+    --action_path data/datasets/Scannet/scans/scene0000_00/action.txt \
+    --output_path output/demo/scene0000_00-7-10 \
+    --sensor_height 0.7 \
+    --feq 20
+
+# ####### 指定场景和初始位置
+# python src/data_collect/viewer_server.py \
+#     --scene data/datasets/Scannet/scans/scene0046_00/scene0046_00_vh_clean.glb \
+#     --dataset data/datasets/Scannet/scene_dataset_config.json \
+#     --action_path data/datasets/Scannet/scans/scene0046_00/action.txt \
+#     --output_path output/scanet/test/scene0046_00 \
+#     --start_position "2.7847664,  1.5457658, -2.013033" \
+#     --start_rotation "0.769103646278381, -0.111514739692211, 0.622807800769806, 0.0903028398752213" \
+#     --sensor_height 0.0 \
+#     --feq 4
 
 # python src/data_collect/viewer_server.py \
 #     --scene data/datasets/Scannet/scans/scene0050_00/scene0050_00_vh_clean.glb \
@@ -48,7 +48,7 @@ python src/data_collect/viewer_server.py \
 # echo "===================${scene} Begin============================="
 # glb_path="$data_dir/$scene/${scene}_vh_clean.glb"
 # config_path="$data_dir/../scene_dataset_config.json"
-# obs_saved_path="output/scanet/test/$scene"
+# obs_saved_path="example_data/scanet/$scene"
 # echo "Using scene: $glb_path"
 # echo "Using config: $config_path"
 # echo "Output will be saved to: $obs_saved_path"
@@ -59,7 +59,7 @@ python src/data_collect/viewer_server.py \
 #     --sensor_height 0.7 \
 #     --width 256 \
 #     --height 256 \
-#     --LOOK 2.8
+#     --LOOK 36
 # echo "===================== ${scene} Done==========================="
 
 ######### batch Scanet data collection
